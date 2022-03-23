@@ -34,5 +34,7 @@ public class TarLauncher {
             parser.printUsage(System.err);
             return;
         }
+        Tar tar = new Tar(inputFileName, outputFileName, inputFileNames);
+        tar.start();
     }
 }
