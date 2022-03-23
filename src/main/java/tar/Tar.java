@@ -20,7 +20,7 @@ public class Tar {
     }
 
     public void start() {
-        if (!inputFileName.isEmpty()) {
+        if (!outputFileName.isEmpty()) {
             startArchiving();
         }
     }
@@ -41,10 +41,11 @@ public class Tar {
         try {
             outputFile = new FileWriter(outputFileName);
         } catch (IOException e) {
-            System.err.println(outputFileName + " cannot be created (" + e.getMessage() + ")");
+            System.err.println(outputFileName + " cannot be created: " + e.getMessage());
             System.err.println("Archiving stopped");
             return;
         }
+        // Перебор всех файлов
         for (String file : inputFileNames)
             try (FileReader scanner = new FileReader(file)) {
                 // Запись головного блока
@@ -70,17 +71,16 @@ public class Tar {
                 // Запись окончания
                 outputFile.write("\n" + endSymbol + "\n");
             } catch (FileNotFoundException e) {
-                System.err.println(file + " not found (" + e.getMessage() + ")");
+                System.err.println(file + " not found: " + e.getMessage());
             } catch (IOException e) {
-                System.err.println(outputFileName + " cannot be changed (" + e.getMessage() + ")");
+                System.err.println(outputFileName + " cannot be changed: " + e.getMessage());
                 System.err.println("Archiving stopped");
                 return;
             }
         try {
             Objects.requireNonNull(outputFile).close();
         } catch (IOException e) {
-            System.err.println(outputFileName + " cannot be closed (" + e.getMessage() + ")");
+            System.err.println(outputFileName + " cannot be closed: " + e.getMessage());
         }
     }
 }
-
