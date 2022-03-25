@@ -3,7 +3,6 @@ package tar;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.regex.Pattern;
 
 public class Tar {
     private final String inputFileName;
@@ -11,7 +10,6 @@ public class Tar {
     private final List<String> inputFileNames;
 
     private static final int COUNT_LINES = 10;
-    private static final char END_SYMBOL = (char) 0;
 
     public Tar(String inputFileName, String outputFileName, List<String> inputFileNames) {
         this.inputFileName = inputFileName;
@@ -31,15 +29,11 @@ public class Tar {
 
     private void writeNextPart(FileWriter outputFile, String fileName, List<String> buffer, int countLines) throws IOException {
         // Запись головного блока
-        outputFile.write(END_SYMBOL + "\n");
         outputFile.write(fileName);
-        outputFile.write("\n" + countLines + "\n" + END_SYMBOL + "\n");
+        outputFile.write("\n" + countLines + "\n");
         // Запись тела
         for (String s : buffer)
             outputFile.write(s);
-        // Запись конца
-        outputFile.write((buffer.size() - (buffer.get(buffer.size() - 1).contains("\n") ? 1 : 0) == COUNT_LINES
-                ? "" : "\n") + END_SYMBOL + "\n");
     }
 
     private void startArchiving() {
@@ -54,7 +48,8 @@ public class Tar {
         }
         // Перебор всех файлов
         for (String file : inputFileNames)
-            try (BufferedReader scanner = new BufferedReader(new FileReader(file))) {
+            try (BufferedReader inputFile = new BufferedReader(new FileReader(file))) {
+                boolean inputFileIsEmpty = true;
                 // Подсчитывает число строк
                 int counter = 0;
                 // Имя текущего входного файла
@@ -63,7 +58,8 @@ public class Tar {
                 // Проход по файлу
                 char symbol;
                 List<String> buffer = new ArrayList<>();
-                while ((symbol = (char) scanner.read()) != (char) -1) {
+                while ((symbol = (char) inputFile.read()) != (char) -1) {
+                    inputFileIsEmpty = false;
                     line.append(symbol);
                     if (symbol == '\n') {
                         if (counter == COUNT_LINES) {
@@ -78,11 +74,19 @@ public class Tar {
                         counter++;
                     }
                 }
+                // Если мы не записали строку в буфер
                 if (!line.toString().isEmpty())
                     buffer.add(line.toString());
                 if (!buffer.isEmpty()) {
+                    // Записать оставшиеся в буфере данные
                     writeNextPart(outputFile, fileName, buffer, buffer.size() +
                             (buffer.get(buffer.size() - 1).contains("\n") ? 1 : 0));
+                    outputFile.write("\n");
+                }
+                // Если файл оказался пустой, записать одну пустую строку
+                if (inputFileIsEmpty) {
+                    writeNextPart(outputFile, fileName, new ArrayList<>(), 1);
+                    outputFile.write("\n");
                 }
             } catch (FileNotFoundException e) {
                 System.err.println(file + " not found: " + e.getMessage());
