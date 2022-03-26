@@ -1,7 +1,7 @@
 package tar;
 
-import org.junit.Test;
-
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,7 +53,7 @@ public class TarTest {
     }
 
     @Test
-    public void randomTest() {
+    public void TestRandom() {
         for (int j = 0; j < 100; j++) {
             int countFiles = (int) (Math.random() * 100);
             List<String> files = new ArrayList<>();
@@ -64,7 +64,7 @@ public class TarTest {
             new Tar("", "output/out.txt", files).start();
             new Tar("output/out.txt", "", null).start();
             for (int i = 0; i < countFiles; i++) {
-                assertTrue(assertFilesContent("input/text" + i + ".txt", "text" + i + ".txt"));
+                Assertions.assertTrue(assertFilesContent("input/text" + i + ".txt", "text" + i + ".txt"));
                 new File("input/text" + i + ".txt").delete();
                 new File("text" + i + ".txt").delete();
             }

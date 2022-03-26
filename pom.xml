@@ -58,7 +58,6 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <skipTests>false</skipTests>
                     <archive>
                         <manifest>
                             <mainClass>tar.TarLauncher</mainClass>
