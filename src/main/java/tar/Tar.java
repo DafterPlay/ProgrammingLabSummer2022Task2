@@ -20,14 +20,16 @@ public class Tar {
     public void start() {
         if (!outputFileName.isEmpty()) {
             startArchiving();
+        } else {
+            startUnzipping();
         }
     }
 
-    private void writeNextPart(FileWriter outputFile, String fileName, List<String> buffer) throws IOException {
+    private void writeNextPart(BufferedWriter outputFile, String fileName, List<String> buffer) throws IOException {
         writeNextPart(outputFile, fileName, buffer, COUNT_LINES);
     }
 
-    private void writeNextPart(FileWriter outputFile, String fileName, List<String> buffer, int countLines) throws IOException {
+    private void writeNextPart(BufferedWriter outputFile, String fileName, List<String> buffer, int countLines) throws IOException {
         // Запись головного блока
         outputFile.write(fileName);
         outputFile.write("\n" + countLines + "\n");
@@ -37,17 +39,18 @@ public class Tar {
     }
 
     private void startArchiving() {
-        FileWriter outputFile;
+        BufferedWriter outputFile;
         // Открытие файла на запись
         try {
-            outputFile = new FileWriter(outputFileName);
+            outputFile = new BufferedWriter(new FileWriter(outputFileName));
         } catch (IOException e) {
             System.err.println(outputFileName + " cannot be created: " + e.getMessage());
             System.err.println("Archiving stopped");
             return;
         }
         // Перебор всех файлов
-        for (String file : inputFileNames)
+        for (String file : inputFileNames) {
+            System.out.println("Archiving " + file + " started");
             try (BufferedReader inputFile = new BufferedReader(new FileReader(file))) {
                 boolean inputFileIsEmpty = true;
                 // Подсчитывает число строк
@@ -90,15 +93,83 @@ public class Tar {
                 }
             } catch (FileNotFoundException e) {
                 System.err.println(file + " not found: " + e.getMessage());
+                continue;
             } catch (IOException e) {
                 System.err.println(outputFileName + " cannot be changed: " + e.getMessage());
                 System.err.println("Archiving stopped");
                 return;
             }
+            System.out.println("Archiving " + file + " ended");
+
+        }
         try {
             Objects.requireNonNull(outputFile).close();
         } catch (IOException e) {
             System.err.println(outputFileName + " cannot be closed: " + e.getMessage());
+        }
+        System.out.println("Archiving complete, output file: " + outputFileName);
+    }
+
+    private void startUnzipping() {
+        BufferedReader inputFile;
+        // Открытие файла на чтение
+        try {
+            inputFile = new BufferedReader(new FileReader(inputFileName));
+        } catch (FileNotFoundException e) {
+            System.err.println(inputFileName + " not found: " + e.getMessage());
+            System.err.println("Unzipping stopped");
+            return;
+        }
+        try {
+            String fileName = inputFile.readLine();
+            int countLines;
+            while (fileName != null) {
+                BufferedWriter writer;
+                try {
+                    writer = new BufferedWriter(new FileWriter(fileName, true));
+                } catch (IOException e) {
+                    System.err.println(fileName + " cannot be created or changed: " + e.getMessage());
+                    System.err.println("Unzipping stopped");
+                    return;
+                }
+                countLines = Integer.parseInt(inputFile.readLine());
+                for (int i = 0; i < countLines; i++) {
+                    String line = inputFile.readLine();
+                    try {
+                        writer.append(line);
+                        if (i != countLines - 1)
+                            writer.append("\n");
+                        else {
+                            String newFileName = inputFile.readLine();
+                            if (newFileName != null && newFileName.equals(fileName))
+                                writer.append("\n");
+                            fileName = newFileName;
+                        }
+                    } catch (IOException e) {
+                        System.err.println(fileName + " cannot be changed: " + e.getMessage());
+                        System.err.println("Unzipping stopped");
+                        return;
+                    }
+                }
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    System.err.println(fileName + " cannot be closed: " + e.getMessage());
+                }
+            }
+        } catch (IOException e) {
+            System.err.println(inputFileName + " cannot be read: " + e.getMessage());
+            System.err.println("Unzipping stopped");
+            return;
+        } catch (NumberFormatException e) {
+            System.err.println("Incorrect format input file (" + inputFileName + ")");
+            System.err.println("Unzipping stopped");
+            return;
+        }
+        try {
+            Objects.requireNonNull(inputFile).close();
+        } catch (IOException e) {
+            System.err.println(inputFileName + " cannot be closed: " + e.getMessage());
         }
     }
 }

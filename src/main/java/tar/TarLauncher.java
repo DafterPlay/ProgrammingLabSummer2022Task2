@@ -32,6 +32,7 @@ public class TarLauncher {
                         (!inputFileNames.isEmpty() ? " (" + inputFileNames + " not found)" : ""));
         } catch (CmdLineException | IllegalArgumentException e) {
             System.err.println(e.getMessage());
+            // input/text.txt input/text2.txt input/text3.txt txt -out out.txt
             System.err.println("java -jar tar.jar [-u filename.txt | file1.txt file2.txt... -out output.txt]");
             parser.printUsage(System.err);
             return;
