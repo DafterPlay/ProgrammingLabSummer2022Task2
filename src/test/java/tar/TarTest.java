@@ -53,7 +53,7 @@ public class TarTest {
 
     @Test
     public void TestRandom() {
-        for (int j = 0; j < 1; j++) {
+        for (int j = 0; j < 100; j++) {
             int countFiles = (int) (Math.random() * 100);
             List<String> files = new ArrayList<>();
             for (int i = 0; i < countFiles; i++) {
