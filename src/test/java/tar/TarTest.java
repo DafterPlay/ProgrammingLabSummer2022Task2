@@ -54,7 +54,7 @@ public class TarTest {
     public void TestRandom() {
         new File("output").mkdir();
         new File("input").mkdir();
-        for (int j = 0; j < 10; j++) {
+        for (int j = 0; j < 100000; j++) {
             int countFiles = (int) (Math.random() * 99) + 1;
             List<String> files = new ArrayList<>();
             for (int i = 0; i < countFiles; i++) {
