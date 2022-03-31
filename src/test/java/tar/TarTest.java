@@ -13,17 +13,16 @@ public class TarTest {
     private void randomFile(String fileName) {
         try {
             BufferedWriter file = new BufferedWriter(new FileWriter(fileName));
-            int countLines = (int) (Math.random() * 1000); // Число от 0 до 999
+            int countLines = (int) (Math.random() * 999) + 1; // Число от 0 до 999
             for (int i = 0; i < countLines; i++) {
                 int countSymbols = (int) (Math.random() * 1000);
-                for (int j = 0; j < countSymbols; j++) {
+                for (int j = 0; j < countSymbols; j++)
                     file.write((int) (Math.random() * (127 - 32) + 32));
-                }
                 file.write("\n");
             }
             file.close();
         } catch (IOException e) {
-            System.out.println("Fail with tests");
+            System.err.println("Fail with tests");
         }
     }
 
@@ -46,15 +45,17 @@ public class TarTest {
             reader2.close();
             return true;
         } catch (IOException e) {
-            System.out.println("Fail with tests");
+            System.err.println("Fail with tests");
         }
         return false;
     }
 
     @Test
     public void TestRandom() {
-        for (int j = 0; j < 100; j++) {
-            int countFiles = (int) (Math.random() * 100);
+        new File("output").mkdir();
+        new File("input").mkdir();
+        for (int j = 0; j < 10; j++) {
+            int countFiles = (int) (Math.random() * 99) + 1;
             List<String> files = new ArrayList<>();
             for (int i = 0; i < countFiles; i++) {
                 randomFile("input/text" + i + ".txt");
