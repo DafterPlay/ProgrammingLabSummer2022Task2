@@ -11,11 +11,11 @@ import java.util.List;
 
 public class TarLauncher {
     @Option(name = "-u", metaVar = "filename.txt", usage = "File name with merged files", forbids = {"-out"})
-    private String inputFileName = "";
+    private String fileNameToUnarchive = "";
     @Option(name = "-out", metaVar = "output.txt", usage = "File name of merged files", forbids = {"-u"})
-    private String outputFileName = "";
+    private String nameOfOutputArchive = "";
     @Argument(metaVar = "file1.txt file2.txt...", usage = "File names to merge")
-    private List<String> inputFileNames = new ArrayList<>();
+    private List<String> fileNamesForArchiving = new ArrayList<>();
 
     public static void main(String[] args) {
         new TarLauncher().launch(args);
@@ -25,19 +25,18 @@ public class TarLauncher {
         CmdLineParser parser = new CmdLineParser(this);
         try {
             parser.parseArgument(args);
-            if (outputFileName.isEmpty() && !inputFileNames.isEmpty())
+            if (nameOfOutputArchive.isEmpty() && !fileNamesForArchiving.isEmpty())
                 throw new IllegalArgumentException("option \"-u\" does not require arguments");
-            if (inputFileName.isEmpty() && inputFileNames.stream().noneMatch(it -> new File(it).exists()))
+            if (fileNameToUnarchive.isEmpty() && fileNamesForArchiving.stream().noneMatch(it -> new File(it).exists()))
                 throw new IllegalArgumentException("option \"-out\" require arguments" +
-                        (!inputFileNames.isEmpty() ? " (" + inputFileNames + " not found)" : ""));
+                        (!fileNamesForArchiving.isEmpty() ? " (" + fileNamesForArchiving + " not found)" : ""));
         } catch (CmdLineException | IllegalArgumentException e) {
             System.err.println(e.getMessage());
-            // input/text.txt input/text2.txt input/text3.txt txt -out out.txt
             System.err.println("java -jar tar.jar [-u filename.txt | file1.txt file2.txt... -out output.txt]");
             parser.printUsage(System.err);
             return;
         }
-        Tar tar = new Tar(inputFileName, outputFileName, inputFileNames);
+        Tar tar = new Tar(fileNameToUnarchive, nameOfOutputArchive, fileNamesForArchiving);
         tar.start();
     }
 }

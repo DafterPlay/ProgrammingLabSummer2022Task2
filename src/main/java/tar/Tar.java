@@ -5,23 +5,23 @@ import java.nio.file.Path;
 import java.util.*;
 
 public class Tar {
-    private final String inputFileName;
-    private final String outputFileName;
-    private final List<String> inputFileNames;
+    private final String fileNameToUnarchive;
+    private final String nameOfOutputArchive;
+    private final List<String> fileNamesForArchiving;
 
     private static final int COUNT_LINES = 10;
 
-    public Tar(String inputFileName, String outputFileName, List<String> inputFileNames) {
-        this.inputFileName = inputFileName;
-        this.outputFileName = outputFileName;
-        this.inputFileNames = inputFileNames;
+    public Tar(String fileNameToUnarchive, String nameOfOutputArchive, List<String> fileNamesForArchiving) {
+        this.fileNameToUnarchive = fileNameToUnarchive;
+        this.nameOfOutputArchive = nameOfOutputArchive;
+        this.fileNamesForArchiving = fileNamesForArchiving;
     }
 
     public void start() {
-        if (!outputFileName.isEmpty()) {
+        if (!nameOfOutputArchive.isEmpty()) {
             startArchiving();
         } else {
-            startUnzipping();
+            startUnarchive();
         }
     }
 
@@ -42,21 +42,21 @@ public class Tar {
         BufferedWriter outputFile;
         // Открытие файла на запись
         try {
-            outputFile = new BufferedWriter(new FileWriter(outputFileName));
+            outputFile = new BufferedWriter(new FileWriter(nameOfOutputArchive));
         } catch (IOException e) {
-            System.err.println(outputFileName + " cannot be created: " + e.getMessage());
+            System.err.println(nameOfOutputArchive + " cannot be created: " + e.getMessage());
             System.err.println("Archiving stopped");
             return;
         }
         // Перебор всех файлов
-        for (String file : inputFileNames) {
+        for (String file : fileNamesForArchiving) {
             System.out.println("Archiving " + file + " started");
             try (BufferedReader inputFile = new BufferedReader(new FileReader(file))) {
                 boolean inputFileIsEmpty = true;
                 // Подсчитывает число строк
                 int counter = 0;
                 // Имя текущего входного файла
-                String fileName = String.valueOf(Path.of(file).getFileName());
+                String fileName = Path.of(file).getFileName().toString();
                 StringBuilder line = new StringBuilder();
                 // Проход по файлу
                 char symbol;
@@ -78,7 +78,7 @@ public class Tar {
                     }
                 }
                 // Если мы не записали строку в буфер
-                if (!line.toString().isEmpty())
+                if (line.length() != 0)
                     buffer.add(line.toString());
                 if (!buffer.isEmpty()) {
                     // Записать оставшиеся в буфере данные
@@ -95,7 +95,7 @@ public class Tar {
                 System.err.println(file + " not found: " + e.getMessage());
                 continue;
             } catch (IOException e) {
-                System.err.println(outputFileName + " cannot be changed: " + e.getMessage());
+                System.err.println(nameOfOutputArchive + " cannot be changed: " + e.getMessage());
                 System.err.println("Archiving stopped");
                 return;
             }
@@ -105,18 +105,18 @@ public class Tar {
         try {
             Objects.requireNonNull(outputFile).close();
         } catch (IOException e) {
-            System.err.println(outputFileName + " cannot be closed: " + e.getMessage());
+            System.err.println(nameOfOutputArchive + " cannot be closed: " + e.getMessage());
         }
-        System.out.println("Archiving complete, output file: " + outputFileName);
+        System.out.println("Archiving complete, output file: " + nameOfOutputArchive);
     }
 
-    private void startUnzipping() {
+    private void startUnarchive() {
         BufferedReader inputFile;
         // Открытие файла на чтение
         try {
-            inputFile = new BufferedReader(new FileReader(inputFileName));
+            inputFile = new BufferedReader(new FileReader(fileNameToUnarchive));
         } catch (FileNotFoundException e) {
-            System.err.println(inputFileName + " not found: " + e.getMessage());
+            System.err.println(fileNameToUnarchive + " not found: " + e.getMessage());
             System.err.println("Unzipping stopped");
             return;
         }
@@ -158,18 +158,18 @@ public class Tar {
                 }
             }
         } catch (IOException e) {
-            System.err.println(inputFileName + " cannot be read: " + e.getMessage());
+            System.err.println(fileNameToUnarchive + " cannot be read: " + e.getMessage());
             System.err.println("Unzipping stopped");
             return;
         } catch (NumberFormatException e) {
-            System.err.println("Incorrect format input file (" + inputFileName + ")");
+            System.err.println("Incorrect format input file (" + fileNameToUnarchive + ")");
             System.err.println("Unzipping stopped");
             return;
         }
         try {
             Objects.requireNonNull(inputFile).close();
         } catch (IOException e) {
-            System.err.println(inputFileName + " cannot be closed: " + e.getMessage());
+            System.err.println(fileNameToUnarchive + " cannot be closed: " + e.getMessage());
         }
     }
 }
