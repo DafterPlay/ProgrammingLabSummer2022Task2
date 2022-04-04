@@ -108,37 +108,30 @@ public class Tar {
                 String fileName = inputFile.readLine();
                 int countLines;
                 while (fileName != null) {
-                    BufferedWriter writer;
-                    try {
-                        writer = new BufferedWriter(new FileWriter(fileName, true));
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true))) {
+                        countLines = Integer.parseInt(inputFile.readLine());
+                        for (int i = 0; i < countLines; i++) {
+                            String line = inputFile.readLine();
+                            try {
+                                writer.append(line);
+                                if (i != countLines - 1)
+                                    writer.append("\n");
+                                else {
+                                    String newFileName = inputFile.readLine();
+                                    if (newFileName != null && newFileName.equals(fileName))
+                                        writer.append("\n");
+                                    fileName = newFileName;
+                                }
+                            } catch (IOException e) {
+                                System.err.println(fileName + " cannot be changed: " + e.getMessage());
+                                System.err.println("Unzipping stopped");
+                                return;
+                            }
+                        }
                     } catch (IOException e) {
                         System.err.println(fileName + " cannot be created or changed: " + e.getMessage());
                         System.err.println("Unzipping stopped");
                         return;
-                    }
-                    countLines = Integer.parseInt(inputFile.readLine());
-                    for (int i = 0; i < countLines; i++) {
-                        String line = inputFile.readLine();
-                        try {
-                            writer.append(line);
-                            if (i != countLines - 1)
-                                writer.append("\n");
-                            else {
-                                String newFileName = inputFile.readLine();
-                                if (newFileName != null && newFileName.equals(fileName))
-                                    writer.append("\n");
-                                fileName = newFileName;
-                            }
-                        } catch (IOException e) {
-                            System.err.println(fileName + " cannot be changed: " + e.getMessage());
-                            System.err.println("Unzipping stopped");
-                            return;
-                        }
-                    }
-                    try {
-                        writer.close();
-                    } catch (IOException e) {
-                        System.err.println(fileName + " cannot be closed: " + e.getMessage());
                     }
                 }
             } catch (IOException e) {
