@@ -25,10 +25,6 @@ public class Tar {
         }
     }
 
-    private void writeNextPart(BufferedWriter outputFile, String fileName, List<String> buffer) throws IOException {
-        writeNextPart(outputFile, fileName, buffer, COUNT_LINES);
-    }
-
     private void writeNextPart(BufferedWriter outputFile, String fileName, List<String> buffer, int countLines) throws IOException {
         // Запись головного блока
         outputFile.write(fileName);
@@ -52,15 +48,15 @@ public class Tar {
                     String fileName = Path.of(file).getFileName().toString();
                     StringBuilder line = new StringBuilder();
                     // Проход по файлу
-                    char symbol;
+                    int symbol;
                     List<String> buffer = new ArrayList<>();
-                    while ((symbol = (char) inputFile.read()) != (char) -1) {
+                    while ((symbol = inputFile.read()) != -1) {
                         inputFileIsEmpty = false;
-                        line.append(symbol);
+                        line.append((char) symbol);
                         if (symbol == '\n') {
                             if (counter == COUNT_LINES) {
                                 // Записывает порцию данных
-                                writeNextPart(outputFile, fileName, buffer);
+                                writeNextPart(outputFile, fileName, buffer, COUNT_LINES);
                                 buffer.clear();
                                 counter = 0;
                             }
