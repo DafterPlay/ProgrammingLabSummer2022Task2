@@ -1,8 +1,9 @@
 package tar;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.List;
 
 public class Tar {
     private final String fileNameToUnarchive;
@@ -26,7 +27,7 @@ public class Tar {
     }
 
     // Записывает размер файла в 2 байта со смещением, для информации о наличии названия
-    private void writeNewPart(OutputStream outputFile, String fileName, byte[] buffer, int bufferSize) throws IOException {
+    private static void writeNewPart(OutputStream outputFile, String fileName, byte[] buffer, int bufferSize) throws IOException {
         byte[] fileNameBytes = fileName.getBytes();
         if (fileNameBytes.length > 255) throw new IllegalArgumentException("The file name is too long");
         // Записали длину следующего блока (не более 65520)
@@ -42,7 +43,7 @@ public class Tar {
         outputFile.write(buffer, 0, bufferSize);
     }
 
-    private void writeNextPart(OutputStream outputFile, byte[] buffer, int bufferSize) throws IOException {
+    private static void writeNextPart(OutputStream outputFile, byte[] buffer, int bufferSize) throws IOException {
         // Записали длину следующего блока (не более 65520)
         outputFile.write(bufferSize >> 8);
         outputFile.write(bufferSize & 0x00FF);
@@ -55,11 +56,18 @@ public class Tar {
         // Открытие файла на запись
         try (OutputStream outputFile = new BufferedOutputStream(new FileOutputStream(nameOfOutputArchive), BUFFER_SIZE)) {
             // Перебор всех файлов
+            String pathOfMainDir = Path.of("").toAbsolutePath().toString();
             for (String file : fileNamesForArchiving) {
                 System.out.println("Archiving " + file + " started");
                 try (InputStream inputFile = new BufferedInputStream(new FileInputStream(file), BUFFER_SIZE)) {
                     // Имя текущего входного файла
-                    String fileName = Path.of(file).getFileName().toString();
+                    String filePath = Path.of(file).toAbsolutePath().toString();
+                    // Проверка, что файл находится в поддиректории
+                    if (!filePath.startsWith(pathOfMainDir))
+                        throw new IllegalArgumentException();
+                    // Получение относительного пути
+                    String fileName = filePath.replace(pathOfMainDir, "");
+                    if (fileName.startsWith("\\")) fileName = fileName.substring(1);
                     // Проход по файлу
                     byte[] buffer = new byte[BUFFER_SIZE];
                     int bytesRead = inputFile.read(buffer);
@@ -67,7 +75,10 @@ public class Tar {
                     while ((bytesRead = inputFile.read(buffer)) != -1) {
                         writeNextPart(outputFile, buffer, bytesRead);
                     }
-                } catch (FileNotFoundException | IllegalArgumentException e) {
+                } catch (IllegalArgumentException e) {
+                    System.err.println(file + " incorrect path");
+                    continue;
+                } catch (FileNotFoundException e) {
                     System.err.println(file + " not found: " + e.getMessage());
                     continue;
                 } catch (IOException e) {
@@ -84,7 +95,7 @@ public class Tar {
         }
     }
 
-    private String byteArrayToString(byte[] array, int size) {
+    private static String byteArrayToString(byte[] array, int size) {
         StringBuilder out = new StringBuilder();
         for (int i = 0; i < size; i++) {
             out.append((char) array[i]);
@@ -92,7 +103,7 @@ public class Tar {
         return out.toString();
     }
 
-    private int towByteToInt(byte[] num) {
+    private static int towByteToInt(byte[] num) {
         return ((num[0] >= 0 ? num[0] : num[0] + 256) << 8) + (num[1] >= 0 ? num[1] : num[1] + 256);
     }
 
@@ -110,6 +121,7 @@ public class Tar {
                         buffer = new byte[lengthFileName];
                         if (inputFile.read(buffer) != lengthFileName) throw new IllegalArgumentException();
                         fileName = byteArrayToString(buffer, lengthFileName);
+                        Files.createDirectories(Path.of(fileName).getParent());
                     }
                     try (OutputStream writer = new BufferedOutputStream(new FileOutputStream(fileName, true))) {
                         buffer = new byte[countBytes];

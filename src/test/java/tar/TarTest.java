@@ -63,14 +63,18 @@ public class TarTest {
                 files.add("input/text" + i + ".txt");
             }
             new Tar("", "output/out.txt", files).start();
+            new File("input").renameTo(new File("check"));
             new Tar("output/out.txt", "", null).start();
             for (int i = 0; i < countFiles; i++) {
-                Assertions.assertTrue(assertFilesContent("input/text" + i + ".txt", "text" + i + ".txt"));
+                Assertions.assertTrue(assertFilesContent("input/text" + i + ".txt", "check/text" + i + ".txt"));
                 new File("input/text" + i + ".txt").delete();
-                new File("text" + i + ".txt").delete();
+                new File("check/text" + i + ".txt").delete();
             }
             new File("output/out.txt").delete();
+            new File("check").delete();
         }
+        new File("output").delete();
+        new File("input").delete();
     }
 
     @Test
@@ -84,13 +88,17 @@ public class TarTest {
             notVoid.close();
             List<String> files = List.of("input/void1.txt", "input/void2.txt", "input/notVoid.txt");
             new Tar("", "out.txt", files).start();
+            new File("input").renameTo(new File("check"));
             new Tar("out.txt", "", null).start();
             for (String file : files) {
-                Assertions.assertTrue(assertFilesContent(file, Path.of(file).getFileName().toString()));
+                Assertions.assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
                 new File(file).delete();
-                new File(Path.of(file).getFileName().toString()).delete();
+                new File("check/" + Path.of(file).getFileName().toString()).delete();
             }
             new File("out.txt").delete();
+            new File("check").delete();
+            new File("input").delete();
+
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }
@@ -106,15 +114,18 @@ public class TarTest {
             file1 = new FileWriter("input/file1.txt");
             file1.write("asdads\nasdasdasd\nasdasasdasddasdasdasd\n");
             file1.close();
-            List<String> files = List.of("input/file.txt","input/file1.txt");
+            List<String> files = List.of("input/file.txt", "input/file1.txt");
             new Tar("", "out.txt", files).start();
+            new File("input").renameTo(new File("check"));
             new Tar("out.txt", "", null).start();
             for (String file : files) {
-                Assertions.assertTrue(assertFilesContent(file, Path.of(file).getFileName().toString()));
+                Assertions.assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
                 new File(file).delete();
-                new File(Path.of(file).getFileName().toString()).delete();
+                new File("check/" + Path.of(file).getFileName().toString()).delete();
             }
             new File("out.txt").delete();
+            new File("check").delete();
+            new File("input").delete();
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }
