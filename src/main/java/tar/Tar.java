@@ -9,7 +9,7 @@ public class Tar {
     private final String nameOfOutputArchive;
     private final List<String> fileNamesForArchiving;
 
-    private static final int COUNT_LINES = 10;
+    private static final int BUFFER_SIZE = 16384; // 8КБ
 
     public Tar(String fileNameToUnarchive, String nameOfOutputArchive, List<String> fileNamesForArchiving) {
         this.fileNameToUnarchive = fileNameToUnarchive;
@@ -25,62 +25,49 @@ public class Tar {
         }
     }
 
-    private void writeNextPart(BufferedWriter outputFile, String fileName, List<String> buffer, int countLines) throws IOException {
-        // Запись головного блока
-        outputFile.write(fileName);
-        outputFile.write("\n" + countLines + "\n");
-        // Запись тела
-        for (String s : buffer)
-            outputFile.write(s);
+    // Записывает размер файла в 2 байта со смещением, для информации о наличии названия
+    private void writeNewPart(OutputStream outputFile, String fileName, byte[] buffer, int bufferSize) throws IOException {
+        byte[] fileNameBytes = fileName.getBytes();
+        if (fileNameBytes.length > 255) throw new IllegalArgumentException("The file name is too long");
+        // Записали длину следующего блока (не более 65520)
+        outputFile.write(bufferSize >> 8);
+        outputFile.write(bufferSize & 0x00FF);
+        // Добавили информацию, что далее будет заголовок
+        outputFile.write(0xFF);
+        // Записали длину заголовка
+        outputFile.write(fileNameBytes.length);
+        // Записали само имя
+        outputFile.write(fileNameBytes);
+        // Записали основной блок информации
+        outputFile.write(buffer, 0, bufferSize);
+    }
+
+    private void writeNextPart(OutputStream outputFile, byte[] buffer, int bufferSize) throws IOException {
+        // Записали длину следующего блока (не более 65520)
+        outputFile.write(bufferSize >> 8);
+        outputFile.write(bufferSize & 0x00FF);
+        outputFile.write(0x00);
+        // Записали основной блок информации
+        outputFile.write(buffer, 0, bufferSize);
     }
 
     private void startArchiving() {
         // Открытие файла на запись
-        try (BufferedWriter outputFile = new BufferedWriter(new FileWriter(nameOfOutputArchive))) {
+        try (OutputStream outputFile = new BufferedOutputStream(new FileOutputStream(nameOfOutputArchive), BUFFER_SIZE)) {
             // Перебор всех файлов
             for (String file : fileNamesForArchiving) {
                 System.out.println("Archiving " + file + " started");
-                try (BufferedReader inputFile = new BufferedReader(new FileReader(file))) {
-                    boolean inputFileIsEmpty = true;
-                    // Подсчитывает число строк
-                    int counter = 0;
+                try (InputStream inputFile = new BufferedInputStream(new FileInputStream(file), BUFFER_SIZE)) {
                     // Имя текущего входного файла
                     String fileName = Path.of(file).getFileName().toString();
-                    StringBuilder line = new StringBuilder();
                     // Проход по файлу
-                    int symbol;
-                    List<String> buffer = new ArrayList<>();
-                    while ((symbol = inputFile.read()) != -1) {
-                        inputFileIsEmpty = false;
-                        line.append((char) symbol);
-                        if (symbol == '\n') {
-                            if (counter == COUNT_LINES) {
-                                // Записывает порцию данных
-                                writeNextPart(outputFile, fileName, buffer, COUNT_LINES);
-                                buffer.clear();
-                                counter = 0;
-                            }
-                            // Запись значений в буфер
-                            buffer.add(line.toString());
-                            line = new StringBuilder();
-                            counter++;
-                        }
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    int bytesRead = inputFile.read(buffer);
+                    writeNewPart(outputFile, fileName, buffer, bytesRead != -1 ? bytesRead : 0);
+                    while ((bytesRead = inputFile.read(buffer)) != -1) {
+                        writeNextPart(outputFile, buffer, bytesRead);
                     }
-                    // Если мы не записали строку в буфер
-                    if (line.length() != 0)
-                        buffer.add(line.toString());
-                    if (!buffer.isEmpty()) {
-                        // Записать оставшиеся в буфере данные
-                        writeNextPart(outputFile, fileName, buffer, buffer.size() +
-                                (buffer.get(buffer.size() - 1).contains("\n") ? 1 : 0));
-                        outputFile.write("\n");
-                    }
-                    // Если файл оказался пустой, записать одну пустую строку
-                    if (inputFileIsEmpty) {
-                        writeNextPart(outputFile, fileName, new ArrayList<>(), 1);
-                        outputFile.write("\n");
-                    }
-                } catch (FileNotFoundException e) {
+                } catch (FileNotFoundException | IllegalArgumentException e) {
                     System.err.println(file + " not found: " + e.getMessage());
                     continue;
                 } catch (IOException e) {
@@ -97,43 +84,48 @@ public class Tar {
         }
     }
 
+    private String byteArrayToString(byte[] array, int size) {
+        StringBuilder out = new StringBuilder();
+        for (int i = 0; i < size; i++) {
+            out.append((char) array[i]);
+        }
+        return out.toString();
+    }
+
+    private int towByteToInt(byte[] num) {
+        return ((num[0] >= 0 ? num[0] : num[0] + 256) << 8) + (num[1] >= 0 ? num[1] : num[1] + 256);
+    }
+
     private void startUnarchive() {
         // Открытие файла на чтение
-        try (BufferedReader inputFile = new BufferedReader(new FileReader(fileNameToUnarchive))) {
+        try (InputStream inputFile = new BufferedInputStream(new FileInputStream(fileNameToUnarchive))) {
             try {
-                String fileName = inputFile.readLine();
-                int countLines;
-                while (fileName != null) {
-                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName, true))) {
-                        countLines = Integer.parseInt(inputFile.readLine());
-                        for (int i = 0; i < countLines; i++) {
-                            String line = inputFile.readLine();
-                            try {
-                                writer.append(line);
-                                if (i != countLines - 1)
-                                    writer.append("\n");
-                                else {
-                                    String newFileName = inputFile.readLine();
-                                    if (newFileName != null && newFileName.equals(fileName))
-                                        writer.append("\n");
-                                    fileName = newFileName;
-                                }
-                            } catch (IOException e) {
-                                System.err.println(fileName + " cannot be changed: " + e.getMessage());
-                                System.err.println("Unzipping stopped");
-                                return;
-                            }
-                        }
+                String fileName = "";
+                byte[] buffer = new byte[3];
+                if (inputFile.read(buffer) == -1) throw new IllegalArgumentException();
+                do {
+                    int countBytes = towByteToInt(buffer);
+                    if (buffer[2] == (byte) 0xFF) {
+                        int lengthFileName = inputFile.read();
+                        buffer = new byte[lengthFileName];
+                        if (inputFile.read(buffer) != lengthFileName) throw new IllegalArgumentException();
+                        fileName = byteArrayToString(buffer, lengthFileName);
+                    }
+                    try (OutputStream writer = new BufferedOutputStream(new FileOutputStream(fileName, true))) {
+                        buffer = new byte[countBytes];
+                        if (inputFile.read(buffer) != countBytes) throw new IllegalArgumentException();
+                        writer.write(buffer);
                     } catch (IOException e) {
                         System.err.println(fileName + " cannot be created or changed: " + e.getMessage());
                         System.err.println("Unzipping stopped");
                         return;
                     }
-                }
+                    buffer = new byte[3];
+                } while (inputFile.read(buffer) != -1);
             } catch (IOException e) {
                 System.err.println(fileNameToUnarchive + " cannot be read: " + e.getMessage());
                 System.err.println("Unzipping stopped");
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException e) {
                 System.err.println("Incorrect format input file (" + fileNameToUnarchive + ")");
                 System.err.println("Unzipping stopped");
             }

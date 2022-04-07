@@ -85,7 +85,31 @@ public class TarTest {
             List<String> files = List.of("input/void1.txt", "input/void2.txt", "input/notVoid.txt");
             new Tar("", "out.txt", files).start();
             new Tar("out.txt", "", null).start();
-            for (String file: files) {
+            for (String file : files) {
+                Assertions.assertTrue(assertFilesContent(file, Path.of(file).getFileName().toString()));
+                new File(file).delete();
+                new File(Path.of(file).getFileName().toString()).delete();
+            }
+            new File("out.txt").delete();
+        } catch (IOException e) {
+            System.err.println("Fail with tests");
+        }
+    }
+
+    @Test
+    public void test() {
+        try {
+            new File("input").mkdir();
+            FileWriter file1 = new FileWriter("input/file.txt");
+            file1.write("asdads\nasdasdasd\nasdasdasdasdasd\n");
+            file1.close();
+            file1 = new FileWriter("input/file1.txt");
+            file1.write("asdads\nasdasdasd\nasdasasdasddasdasdasd\n");
+            file1.close();
+            List<String> files = List.of("input/file.txt","input/file1.txt");
+            new Tar("", "out.txt", files).start();
+            new Tar("out.txt", "", null).start();
+            for (String file : files) {
                 Assertions.assertTrue(assertFilesContent(file, Path.of(file).getFileName().toString()));
                 new File(file).delete();
                 new File(Path.of(file).getFileName().toString()).delete();
