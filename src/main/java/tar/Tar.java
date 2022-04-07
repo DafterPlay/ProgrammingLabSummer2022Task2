@@ -67,7 +67,7 @@ public class Tar {
                         throw new IllegalArgumentException();
                     // Получение относительного пути
                     String fileName = filePath.replace(pathOfMainDir, "");
-                    if (fileName.startsWith("\\")) fileName = fileName.substring(1);
+                    if (fileName.startsWith("\\") || fileName.startsWith("/")) fileName = fileName.substring(1);
                     // Проход по файлу
                     byte[] buffer = new byte[BUFFER_SIZE];
                     int bytesRead = inputFile.read(buffer);

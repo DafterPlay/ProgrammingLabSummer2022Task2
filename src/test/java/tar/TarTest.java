@@ -4,29 +4,12 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 public class TarTest {
-    private static void renameDir(String sourceDirName, String targetSourceDir) {
-        try {
-            File folder = new File(sourceDirName);
-            File[] listOfFiles = folder.listFiles();
-            Path destDir = Paths.get(targetSourceDir);
-            Files.createDirectories(destDir);
-            if (listOfFiles != null)
-                for (File file : listOfFiles)
-                    Files.move(file.toPath(), destDir.resolve(file.getName()), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            System.err.println("Fail with tests");
-        }
-    }
-
     private void randomFile(String fileName) {
         try {
             BufferedWriter file = new BufferedWriter(new FileWriter(fileName));
@@ -79,7 +62,7 @@ public class TarTest {
                 files.add("input/text" + i + ".txt");
             }
             new Tar("", "output/out.txt", files).start();
-            renameDir("input", "check");
+            new File("input").renameTo(new File("check"));
             new Tar("output/out.txt", "", null).start();
             for (int i = 0; i < countFiles; i++) {
                 Assertions.assertTrue(assertFilesContent("input/text" + i + ".txt", "check/text" + i + ".txt"));
@@ -104,7 +87,7 @@ public class TarTest {
             notVoid.close();
             List<String> files = List.of("input/void1.txt", "input/void2.txt", "input/notVoid.txt");
             new Tar("", "out.txt", files).start();
-            renameDir("input", "check");
+            new File("input").renameTo(new File("check"));
             new Tar("out.txt", "", null).start();
             for (String file : files) {
                 Assertions.assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
@@ -132,7 +115,7 @@ public class TarTest {
             file1.close();
             List<String> files = List.of("input/file.txt", "input/file1.txt");
             new Tar("", "out.txt", files).start();
-            renameDir("input", "check");
+            new File("input").renameTo(new File("check"));
             new Tar("out.txt", "", null).start();
             for (String file : files) {
                 Assertions.assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
