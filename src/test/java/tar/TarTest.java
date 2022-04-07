@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.io.*;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 public class TarTest {
     private void randomFile(String fileName) {
@@ -26,28 +26,21 @@ public class TarTest {
         }
     }
 
-    private boolean assertFilesContent(String file1, String file2) {
-        try {
-            BufferedReader reader1 = new BufferedReader(new FileReader(file1));
-            BufferedReader reader2 = new BufferedReader(new FileReader(file2));
-            String reader1Line = reader1.readLine();
-            String reader2Line = reader2.readLine();
-            while (reader1Line != null && reader2Line != null) {
-                if (!Objects.equals(reader1Line, reader2Line)) {
-                    reader1.close();
-                    reader2.close();
-                    return false;
-                }
-                reader1Line = reader1.readLine();
-                reader2Line = reader2.readLine();
-            }
-            reader1.close();
-            reader2.close();
-            return true;
+    private boolean assertFilesContent(String fileName1, String fileName2) {
+        int BUFFER_SIZE = 1024;
+        try (
+                InputStream file1 = new BufferedInputStream(new FileInputStream(fileName1), BUFFER_SIZE);
+                InputStream file2 = new BufferedInputStream(new FileInputStream(fileName2), BUFFER_SIZE)
+        ) {
+            byte[] buffer1 = new byte[BUFFER_SIZE],
+                    buffer2 = new byte[BUFFER_SIZE];
+            while (file1.read(buffer1) != -1 && file2.read(buffer2) != -1)
+                if (!Arrays.equals(buffer1, buffer2)) return false;
         } catch (IOException e) {
             System.err.println("Fail with tests");
+            return false;
         }
-        return false;
+        return true;
     }
 
     @Test
