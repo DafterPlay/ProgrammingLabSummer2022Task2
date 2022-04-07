@@ -64,7 +64,7 @@ public class Tar {
                     String filePath = Path.of(file).toAbsolutePath().toString();
                     // Проверка, что файл находится в поддиректории
                     if (!filePath.startsWith(pathOfMainDir))
-                        throw new IllegalArgumentException();
+                        throw new IllegalArgumentException("Incorrect path");
                     // Получение относительного пути
                     String fileName = filePath.replace(pathOfMainDir, "");
                     if (fileName.startsWith("\\") || fileName.startsWith("/")) fileName = fileName.substring(1);
@@ -76,7 +76,7 @@ public class Tar {
                         writeNextPart(outputFile, buffer, bytesRead);
                     }
                 } catch (IllegalArgumentException e) {
-                    System.err.println(file + " incorrect path");
+                    System.err.println(file + " error: " + e.getMessage());
                     continue;
                 } catch (FileNotFoundException e) {
                     System.err.println(file + " not found: " + e.getMessage());
@@ -97,9 +97,8 @@ public class Tar {
 
     private static String byteArrayToString(byte[] array, int size) {
         StringBuilder out = new StringBuilder();
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++)
             out.append((char) array[i]);
-        }
         return out.toString();
     }
 
@@ -113,7 +112,7 @@ public class Tar {
             try {
                 String fileName = "";
                 byte[] buffer = new byte[3];
-                if (inputFile.read(buffer) == -1) throw new IllegalArgumentException();
+                if (inputFile.read(buffer) != 3) throw new IllegalArgumentException();
                 do {
                     int countBytes = towByteToInt(buffer);
                     if (buffer[2] == (byte) 0xFF) {
@@ -123,9 +122,9 @@ public class Tar {
                         fileName = byteArrayToString(buffer, lengthFileName);
                         Files.createDirectories(Path.of(fileName).getParent());
                     }
+                    buffer = new byte[countBytes];
+                    if (inputFile.read(buffer) != countBytes) throw new IllegalArgumentException();
                     try (OutputStream writer = new BufferedOutputStream(new FileOutputStream(fileName, true))) {
-                        buffer = new byte[countBytes];
-                        if (inputFile.read(buffer) != countBytes) throw new IllegalArgumentException();
                         writer.write(buffer);
                     } catch (IOException e) {
                         System.err.println(fileName + " cannot be created or changed: " + e.getMessage());
