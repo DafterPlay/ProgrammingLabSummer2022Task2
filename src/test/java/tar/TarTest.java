@@ -1,13 +1,15 @@
 package tar;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 
 public class TarTest {
     private void randomFile(String fileName) {
@@ -56,7 +58,7 @@ public class TarTest {
         createDir("input");
         for (int j = 0; j < 10; j++) {
             int countFiles = (int) (Math.random() * 99) + 1;
-            List<String> files = new ArrayList<>();
+            List<String> files = new LinkedList<>();
             for (int i = 0; i < countFiles; i++) {
                 randomFile("input/text" + i + ".txt");
                 files.add("input/text" + i + ".txt");
@@ -65,7 +67,7 @@ public class TarTest {
             renameDir("input", "check");
             new Tar("output/out.txt", "", null).start();
             for (int i = 0; i < countFiles; i++) {
-                Assertions.assertTrue(assertFilesContent("input/text" + i + ".txt", "check/text" + i + ".txt"));
+                assertTrue(assertFilesContent("input/text" + i + ".txt", "check/text" + i + ".txt"));
                 removeDirOrFile("input/text" + i + ".txt");
                 removeDirOrFile("check/text" + i + ".txt");
             }
@@ -90,7 +92,7 @@ public class TarTest {
             renameDir("input", "check");
             new Tar("out.txt", "", null).start();
             for (String file : files) {
-                Assertions.assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
+                assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
                 removeDirOrFile(file);
                 removeDirOrFile("check/" + Path.of(file).getFileName().toString());
             }
@@ -117,7 +119,7 @@ public class TarTest {
             renameDir("input", "check");
             new Tar("out.txt", "", null).start();
             for (String file : files) {
-                Assertions.assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
+                assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
                 removeDirOrFile(file);
                 removeDirOrFile("check/" + Path.of(file).getFileName().toString());
             }

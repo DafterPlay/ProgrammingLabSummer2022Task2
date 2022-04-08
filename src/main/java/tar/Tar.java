@@ -29,14 +29,15 @@ public class Tar {
     // Записывает размер файла в 2 байта со смещением, для информации о наличии названия
     private static void writeNewPart(OutputStream outputFile, String fileName, byte[] buffer, int bufferSize) throws IOException {
         byte[] fileNameBytes = fileName.getBytes();
-        if (fileNameBytes.length > 255) throw new IllegalArgumentException("The file name is too long");
+        if (fileNameBytes.length > 65535) throw new IllegalArgumentException("The file name is too long");
         // Записали длину следующего блока (не более 65520)
         outputFile.write(bufferSize >> 8);
         outputFile.write(bufferSize & 0x00FF);
         // Добавили информацию, что далее будет заголовок
         outputFile.write(0xFF);
         // Записали длину заголовка
-        outputFile.write(fileNameBytes.length);
+        outputFile.write(fileNameBytes.length >> 8);
+        outputFile.write(fileNameBytes.length & 0x00FF);
         // Записали само имя
         outputFile.write(fileNameBytes);
         // Записали основной блок информации
@@ -116,7 +117,7 @@ public class Tar {
                 do {
                     int countBytes = towByteToInt(buffer);
                     if (buffer[2] == (byte) 0xFF) {
-                        int lengthFileName = inputFile.read();
+                        int lengthFileName = (inputFile.read() << 8) + inputFile.read();
                         buffer = new byte[lengthFileName];
                         if (inputFile.read(buffer) != lengthFileName) throw new IllegalArgumentException();
                         fileName = byteArrayToString(buffer, lengthFileName);
