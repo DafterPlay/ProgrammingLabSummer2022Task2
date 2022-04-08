@@ -11,16 +11,10 @@ import java.util.List;
 
 public class TarTest {
     private void randomFile(String fileName) {
-        try {
-            BufferedWriter file = new BufferedWriter(new FileWriter(fileName));
-            int countLines = (int) (Math.random() * 999) + 1; // Число от 0 до 999
-            for (int i = 0; i < countLines; i++) {
-                int countSymbols = (int) (Math.random() * 1000);
-                for (int j = 0; j < countSymbols; j++)
-                    file.write((int) (Math.random() * (127 - 32) + 32));
-                file.write("\n");
-            }
-            file.close();
+        try (OutputStream file = new BufferedOutputStream(new FileOutputStream(fileName))) {
+            int countBytes = (int) (Math.random() * 1048576); // 0 - 1048576 байт (1 Мб)
+            for (int i = 0; i < countBytes; i++)
+                file.write((int) (Math.random() * 255));
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }

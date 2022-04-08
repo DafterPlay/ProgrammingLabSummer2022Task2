@@ -10,7 +10,7 @@ public class Tar {
     private final String nameOfOutputArchive;
     private final List<String> fileNamesForArchiving;
 
-    private static final int BUFFER_SIZE = 16384; // 8КБ
+    private static final int BUFFER_SIZE = 16384;
 
     public Tar(String fileNameToUnarchive, String nameOfOutputArchive, List<String> fileNamesForArchiving) {
         this.fileNameToUnarchive = fileNameToUnarchive;
