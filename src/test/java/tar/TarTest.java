@@ -3,27 +3,20 @@ package tar;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class TarTest {
-    private void randomFile(String fileName) {
-        try (OutputStream file = new BufferedOutputStream(new FileOutputStream(fileName))) {
-            int countBytes = (int) (Math.random() * 1048576); // 0 - 1048576 байт (1 Мб)
-            for (int i = 0; i < countBytes; i++)
-                file.write((int) (Math.random() * 255));
-        } catch (IOException e) {
-            System.err.println("Fail with tests");
-        }
-    }
-
     private boolean assertFilesContent(String fileName1, String fileName2) {
-        int BUFFER_SIZE = 1024;
+        int BUFFER_SIZE = 4096;
         try (
                 InputStream file1 = new BufferedInputStream(new FileInputStream(fileName1), BUFFER_SIZE);
                 InputStream file2 = new BufferedInputStream(new FileInputStream(fileName2), BUFFER_SIZE)
@@ -39,6 +32,30 @@ public class TarTest {
         return true;
     }
 
+    private void randomFile(String fileName) {
+        try (OutputStream file = new BufferedOutputStream(new FileOutputStream(fileName))) {
+            int countBytes = (int) (Math.random() * 1048576); // 0 - 1048576 байт (1 Мб)
+            for (int i = 0; i < countBytes; i++)
+                file.write((int) (Math.random() * 255));
+        } catch (IOException e) {
+            System.err.println("Fail with tests");
+        }
+    }
+
+    private String randomFileName() {
+        Set<Integer> illegalChars = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
+        int size = (int) (Math.random() * 29 + 1);
+        StringBuilder name = new StringBuilder();
+        for (int i = 0; i < size; i++) {
+            int newSymbol = (int) (Math.random() * 223 + 32);
+            while (illegalChars.contains(newSymbol)) {
+                newSymbol = (int) (Math.random() * 223 + 32);
+            }
+            name.append((char) newSymbol);
+        }
+        return name + ".txt";
+    }
+
     private void createDir(String name) {
         if (!(new File(name).mkdir())) throw new IllegalArgumentException("Dir " + name + " cannot be created");
     }
@@ -52,81 +69,83 @@ public class TarTest {
             throw new IllegalArgumentException("Dir " + currentName + " cannot be renamed to " + newName);
     }
 
+    private void assertFilesTrue(String input, String checkDir, List<String> files) {
+        for (String file : files) {
+            assertTrue(assertFilesContent(input + "/" + file, checkDir + "/" + file));
+            removeDirOrFile(input + "/" + file);
+            removeDirOrFile(checkDir + "/" + file);
+        }
+    }
+
     @Test
     public void testRandom() {
-        createDir("output");
-        createDir("input");
+        String inputDir = "input";
         for (int j = 0; j < 10; j++) {
+            createDir(inputDir);
             int countFiles = (int) (Math.random() * 99) + 1;
             List<String> files = new LinkedList<>();
             for (int i = 0; i < countFiles; i++) {
-                randomFile("input/text" + i + ".txt");
-                files.add("input/text" + i + ".txt");
+                files.add(randomFileName());
+                randomFile(inputDir + "/" + files.get(files.size() - 1));
             }
-            new Tar("", "output/out.txt", files).start();
-            renameDir("input", "check");
-            new Tar("output/out.txt", "", null).start();
-            for (int i = 0; i < countFiles; i++) {
-                assertTrue(assertFilesContent("input/text" + i + ".txt", "check/text" + i + ".txt"));
-                removeDirOrFile("input/text" + i + ".txt");
-                removeDirOrFile("check/text" + i + ".txt");
-            }
-            removeDirOrFile("output/out.txt");
-            removeDirOrFile("check");
+            new Tar("", "out.txt",
+                    files.stream().map(it -> inputDir + "/" + it).collect(Collectors.toList())).start();
+            String checkDir = "check" + System.currentTimeMillis();
+            renameDir(inputDir, checkDir);
+            new Tar("out.txt", "", null).start();
+            assertFilesTrue(inputDir, checkDir, files);
+            removeDirOrFile("out.txt");
+            removeDirOrFile(checkDir);
+            removeDirOrFile(inputDir);
         }
-        removeDirOrFile("output");
-        removeDirOrFile("input");
     }
 
     @Test
     public void testVoidFiles() {
+        String inputDir = "input";
+        createDir(inputDir);
+        List<String> files = new LinkedList<>();
         try {
-            createDir("input");
-            new FileWriter("input/void1.txt").close();
-            new FileWriter("input/void2.txt").close();
-            FileWriter notVoid = new FileWriter("input/notVoid.txt");
-            notVoid.write("asdads\nasdasdasd\nasdasdasdasdasd\n");
-            notVoid.close();
-            List<String> files = List.of("input/void1.txt", "input/void2.txt", "input/notVoid.txt");
-            new Tar("", "out.txt", files).start();
-            renameDir("input", "check");
+            files.add(randomFileName());
+            Files.writeString(Path.of(inputDir + "/" + files.get(files.size() - 1)), "");
+            files.add(randomFileName());
+            Files.writeString(Path.of(inputDir + "/" + files.get(files.size() - 1)), "");
+            files.add(randomFileName());
+            Files.writeString(Path.of(inputDir + "/" + files.get(files.size() - 1)), "asdads\nasdasdasd\nasdasdasdasdasd\n");
+            new Tar("", "out.txt",
+                    files.stream().map(it -> inputDir + "/" + it).collect(Collectors.toList())).start();
+            String checkDir = "check";
+            renameDir(inputDir, checkDir);
             new Tar("out.txt", "", null).start();
-            for (String file : files) {
-                assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
-                removeDirOrFile(file);
-                removeDirOrFile("check/" + Path.of(file).getFileName().toString());
-            }
-            removeDirOrFile("out.txt");
+            assertFilesTrue(inputDir, checkDir, files);
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }
+        removeDirOrFile("out.txt");
         removeDirOrFile("check");
         removeDirOrFile("input");
     }
 
     @Test
     public void test() {
+        String inputDir = "input";
+        createDir(inputDir);
+        List<String> files = new LinkedList<>();
         try {
-            createDir("input");
-            FileWriter file1 = new FileWriter("input/file.txt");
-            file1.write("asdads\nasdasdasd\nasdasdasdasdasd\n");
-            file1.close();
-            file1 = new FileWriter("input/file1.txt");
-            file1.write("asdads\nasdasdasd\nasdasasdasddasdasdasd\n");
-            file1.close();
-            List<String> files = List.of("input/file.txt", "input/file1.txt");
-            new Tar("", "out.txt", files).start();
-            renameDir("input", "check");
+            files.add(randomFileName());
+            Files.writeString(Path.of(inputDir + "/" + files.get(files.size() - 1)), "asdads\nasdasdasd\nasdasdasdasdasd");
+            files.add(randomFileName());
+            Files.writeString(Path.of(inputDir + "/" + files.get(files.size() - 1)), "asdads\nasdasdasd\nasdasasdasddasdasdasd\n");
+            new Tar("", "out.txt",
+                    files.stream().map(it -> inputDir + "/" + it).collect(Collectors.toList())).start();
+            String checkDir = "check";
+            renameDir(inputDir, checkDir);
             new Tar("out.txt", "", null).start();
-            for (String file : files) {
-                assertTrue(assertFilesContent(file, "check/" + Path.of(file).getFileName().toString()));
-                removeDirOrFile(file);
-                removeDirOrFile("check/" + Path.of(file).getFileName().toString());
-            }
-            removeDirOrFile("out.txt");
+            assertFilesTrue(inputDir, checkDir, files);
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }
+        removeDirOrFile("out.txt");
         removeDirOrFile("check");
         removeDirOrFile("input");
     }

@@ -3,6 +3,7 @@ package tar;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class Tar {
@@ -57,25 +58,23 @@ public class Tar {
         // Открытие файла на запись
         try (OutputStream outputFile = new BufferedOutputStream(new FileOutputStream(nameOfOutputArchive), BUFFER_SIZE)) {
             // Перебор всех файлов
-            String pathOfMainDir = Path.of("").toAbsolutePath().toString();
+            Path pathOfMainDir = Path.of("").toAbsolutePath();
             for (String file : fileNamesForArchiving) {
                 System.out.println("Archiving " + file + " started");
                 try (InputStream inputFile = new BufferedInputStream(new FileInputStream(file), BUFFER_SIZE)) {
                     // Имя текущего входного файла
-                    String filePath = Path.of(file).toAbsolutePath().toString();
+                    Path filePath = Path.of(file).toAbsolutePath();
                     // Проверка, что файл находится в поддиректории
                     if (!filePath.startsWith(pathOfMainDir))
                         throw new IllegalArgumentException("Incorrect path");
                     // Получение относительного пути
-                    String fileName = filePath.replace(pathOfMainDir, "");
-                    if (fileName.startsWith("\\") || fileName.startsWith("/")) fileName = fileName.substring(1);
+                    String fileName = pathOfMainDir.relativize(filePath).toString();
                     // Проход по файлу
                     byte[] buffer = new byte[BUFFER_SIZE];
                     int bytesRead = inputFile.read(buffer);
                     writeNewPart(outputFile, fileName, buffer, bytesRead != -1 ? bytesRead : 0);
-                    while ((bytesRead = inputFile.read(buffer)) != -1) {
+                    while ((bytesRead = inputFile.read(buffer)) != -1)
                         writeNextPart(outputFile, buffer, bytesRead);
-                    }
                 } catch (IllegalArgumentException e) {
                     System.err.println(file + " error: " + e.getMessage());
                     continue;
@@ -96,44 +95,56 @@ public class Tar {
         }
     }
 
-    private static String byteArrayToString(byte[] array, int size) {
-        StringBuilder out = new StringBuilder();
-        for (int i = 0; i < size; i++)
-            out.append((char) array[i]);
-        return out.toString();
+    private static int getTowBytes(InputStream inputFile) throws IOException {
+        int a = inputFile.read(), b = inputFile.read();
+        if (a == -1 && b == -1) return -1;
+        if (a == -1 || b == -1) throw new IllegalArgumentException();
+        return (a << 8) + b;
     }
 
-    private static int towByteToInt(byte[] num) {
-        return ((num[0] >= 0 ? num[0] : num[0] + 256) << 8) + (num[1] >= 0 ? num[1] : num[1] + 256);
+    private static int getOneByte(InputStream inputFile) throws IOException {
+        int a = inputFile.read();
+        if (a == -1) throw new IllegalArgumentException();
+        return a;
+    }
+
+    private Path getPathForFile(InputStream inputFile) throws IOException {
+        int lengthFileName = (inputFile.read() << 8) + inputFile.read();
+        byte[] bufferFileName = new byte[lengthFileName];
+        if (inputFile.read(bufferFileName) != lengthFileName) throw new IllegalArgumentException();
+        Path fileName = Path.of(new String(bufferFileName));
+        try {
+            Files.createDirectories(fileName.getParent());
+            Files.createFile(fileName);
+        } catch (IOException e) {
+            throw new FileNotFoundException(fileName + " cannot be created");
+        }
+        return fileName;
     }
 
     private void startUnarchive() {
-        // Открытие файла на чтение
+        System.out.println("Unzipping started");
         try (InputStream inputFile = new BufferedInputStream(new FileInputStream(fileNameToUnarchive))) {
             try {
-                String fileName = "";
-                byte[] buffer = new byte[3];
-                if (inputFile.read(buffer) != 3) throw new IllegalArgumentException();
-                do {
-                    int countBytes = towByteToInt(buffer);
-                    if (buffer[2] == (byte) 0xFF) {
-                        int lengthFileName = (inputFile.read() << 8) + inputFile.read();
-                        buffer = new byte[lengthFileName];
-                        if (inputFile.read(buffer) != lengthFileName) throw new IllegalArgumentException();
-                        fileName = byteArrayToString(buffer, lengthFileName);
-                        Files.createDirectories(Path.of(fileName).getParent());
-                    }
-                    buffer = new byte[countBytes];
+                Path fileName = Path.of("");
+                int countBytes;
+                while ((countBytes = getTowBytes(inputFile)) != -1) {
+                    if (getOneByte(inputFile) == 0xFF)
+                        fileName = getPathForFile(inputFile);
+                    byte[] buffer = new byte[countBytes];
                     if (inputFile.read(buffer) != countBytes) throw new IllegalArgumentException();
-                    try (OutputStream writer = new BufferedOutputStream(new FileOutputStream(fileName, true))) {
-                        writer.write(buffer);
+                    try {
+                        Files.write(fileName, buffer, StandardOpenOption.APPEND);
                     } catch (IOException e) {
                         System.err.println(fileName + " cannot be created or changed: " + e.getMessage());
                         System.err.println("Unzipping stopped");
                         return;
                     }
-                    buffer = new byte[3];
-                } while (inputFile.read(buffer) != -1);
+                }
+                System.out.println("Unzipping completed");
+            } catch (FileNotFoundException e) {
+                System.err.println(e.getMessage());
+                System.err.println("Unzipping stopped");
             } catch (IOException e) {
                 System.err.println(fileNameToUnarchive + " cannot be read: " + e.getMessage());
                 System.err.println("Unzipping stopped");
