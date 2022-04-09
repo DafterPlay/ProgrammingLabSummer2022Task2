@@ -44,7 +44,7 @@ public class TarTest {
 
     private String randomFileName() {
         Set<Integer> illegalChars = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
-        int size = (int) (Math.random() * 100 + 100);
+        int size = (int) (Math.random() * 50 + 50);
         StringBuilder name = new StringBuilder();
         for (int i = 0; i < size; i++) {
             int newSymbol = (int) (Math.random() * 223 + 32);
