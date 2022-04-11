@@ -3,7 +3,6 @@ package tar;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 
 public class Tar {
@@ -110,14 +109,13 @@ public class Tar {
         return a;
     }
 
-    private Path getPathForFile(InputStream inputFile) throws IOException {
+    private String getNameForFile(InputStream inputFile) throws IOException {
         int lengthFileName = (inputFile.read() << 8) + inputFile.read();
         byte[] bufferFileName = new byte[lengthFileName];
         if (inputFile.read(bufferFileName) != lengthFileName) throw new IllegalArgumentException();
-        Path fileName = Path.of(new String(bufferFileName));
+        String fileName = new String(bufferFileName);
         try {
-            Files.createDirectories(fileName.getParent());
-            Files.createFile(fileName);
+            Files.createDirectories(Path.of(fileName).getParent());
         } catch (IOException e) {
             throw new FileNotFoundException(fileName + " cannot be created");
         }
@@ -130,19 +128,26 @@ public class Tar {
             try {
                 Path fileName = Path.of("");
                 int countBytes;
+                OutputStream outputFile = null;
                 while ((countBytes = getTwoBytes(inputFile)) != -1) {
-                    if (getOneByte(inputFile) == 0xFF)
-                        fileName = getPathForFile(inputFile);
+                    if (getOneByte(inputFile) == 0xFF) {
+                        if (outputFile != null)
+                            outputFile.close();
+                        outputFile = new BufferedOutputStream(new FileOutputStream(getNameForFile(inputFile)), BUFFER_SIZE);
+                    }
                     byte[] buffer = new byte[countBytes];
                     if (inputFile.read(buffer) != countBytes) throw new IllegalArgumentException();
                     try {
-                        Files.write(fileName, buffer, StandardOpenOption.APPEND);
+                        if (outputFile == null) throw new IllegalArgumentException();
+                        outputFile.write(buffer);
                     } catch (IOException e) {
                         System.err.println(fileName + " cannot be created or changed: " + e.getMessage());
                         System.err.println("Unzipping stopped");
                         return;
                     }
                 }
+                if (outputFile != null)
+                    outputFile.close();
                 System.out.println("Unzipping completed");
             } catch (FileNotFoundException e) {
                 System.err.println(e.getMessage());

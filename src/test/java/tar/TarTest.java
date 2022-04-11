@@ -1,6 +1,5 @@
 package tar;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
@@ -16,8 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class TarTest {
-    Set<Integer> illegalCharsName = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
-
     private boolean assertFilesContent(String fileName1, String fileName2) {
         int BUFFER_SIZE = 4096;
         try (
@@ -46,7 +43,7 @@ public class TarTest {
     }
 
     private String randomFileName() {
-
+        Set<Integer> illegalCharsName = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
         int size = (int) (Math.random() * 50 + 50);
         StringBuilder name = new StringBuilder();
         for (int i = 0; i < size; i++) {
@@ -151,15 +148,5 @@ public class TarTest {
         }
         removeDirOrFile("out.txt");
         removeDirOrFile(inputDir);
-    }
-
-    @Test
-    public void illegalCharsTest() {
-        for (int i : illegalCharsName) {
-            try {
-                Files.writeString(Path.of((char) i + "name.txt"), "hello world");
-                Assertions.fail(i + " not illegal");
-            } catch (IllegalArgumentException | IOException ignored) {}
-        }
     }
 }
