@@ -1,5 +1,6 @@
 package tar;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
@@ -15,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
 public class TarTest {
+    Set<Integer> illegalCharsName = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
+
     private boolean assertFilesContent(String fileName1, String fileName2) {
         int BUFFER_SIZE = 4096;
         try (
@@ -43,12 +46,12 @@ public class TarTest {
     }
 
     private String randomFileName() {
-        Set<Integer> illegalChars = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
+
         int size = (int) (Math.random() * 50 + 50);
         StringBuilder name = new StringBuilder();
         for (int i = 0; i < size; i++) {
             int newSymbol = (int) (Math.random() * 223 + 32);
-            while (illegalChars.contains(newSymbol)) {
+            while (illegalCharsName.contains(newSymbol)) {
                 newSymbol = (int) (Math.random() * 223 + 32);
             }
             name.append((char) newSymbol);
@@ -69,7 +72,7 @@ public class TarTest {
             throw new IllegalArgumentException("Dir " + currentName + " cannot be renamed to " + newName);
     }
 
-    private void assertFilesTrue(String input, String checkDir, List<String> files) {
+    private void assertFilesContentEqual(String input, String checkDir, List<String> files) {
         for (String file : files) {
             assertTrue(assertFilesContent(input + "/" + file, checkDir + "/" + file));
             removeDirOrFile(input + "/" + file);
@@ -93,7 +96,7 @@ public class TarTest {
             String checkDir = "check" + System.currentTimeMillis();
             renameDir(inputDir, checkDir);
             new Tar("out.txt", "", null).start();
-            assertFilesTrue(inputDir, checkDir, files);
+            assertFilesContentEqual(inputDir, checkDir, files);
             removeDirOrFile("out.txt");
             removeDirOrFile(checkDir);
             removeDirOrFile(inputDir);
@@ -117,7 +120,7 @@ public class TarTest {
             String checkDir = "check";
             renameDir(inputDir, checkDir);
             new Tar("out.txt", "", null).start();
-            assertFilesTrue(inputDir, checkDir, files);
+            assertFilesContentEqual(inputDir, checkDir, files);
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }
@@ -141,12 +144,22 @@ public class TarTest {
             String checkDir = "check";
             renameDir(inputDir, checkDir);
             new Tar("out.txt", "", null).start();
-            assertFilesTrue(inputDir, checkDir, files);
+            assertFilesContentEqual(inputDir, checkDir, files);
+            removeDirOrFile(checkDir);
         } catch (IOException e) {
             System.err.println("Fail with tests");
         }
         removeDirOrFile("out.txt");
-        removeDirOrFile("check");
-        removeDirOrFile("input");
+        removeDirOrFile(inputDir);
+    }
+
+    @Test
+    public void illegalCharsTest() {
+        for (int i : illegalCharsName) {
+            try {
+                Files.writeString(Path.of((char) i + "name.txt"), "hello world");
+                Assertions.fail(i + " not illegal");
+            } catch (IllegalArgumentException | IOException ignored) {}
+        }
     }
 }
