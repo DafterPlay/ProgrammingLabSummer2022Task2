@@ -43,15 +43,15 @@ public class TarTest {
     }
 
     private String randomFileName() {
-        Set<Integer> illegalCharsName = Set.of(34, 42, 47, 58, 60, 62, 63, 92, 124);
+        Set<Character> illegalCharsName = Set.of('\"', '*', '/', ':', '<', '>', '?', '\\', '|');
         int size = (int) (Math.random() * 50 + 50);
         StringBuilder name = new StringBuilder();
         for (int i = 0; i < size; i++) {
-            int newSymbol = (int) (Math.random() * 223 + 32);
+            char newSymbol = (char) (Math.random() * 223 + 32);
             while (illegalCharsName.contains(newSymbol)) {
-                newSymbol = (int) (Math.random() * 223 + 32);
+                newSymbol = (char) (Math.random() * 223 + 32);
             }
-            name.append((char) newSymbol);
+            name.append(newSymbol);
         }
         return name + ".txt";
     }

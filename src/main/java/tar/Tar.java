@@ -95,12 +95,9 @@ public class Tar {
     }
 
     private static int getTwoBytes(InputStream inputFile) throws IOException {
-        int a = inputFile.read(), b = inputFile.read();
-        if (a == -1) {
-            if (b == -1) return -1;
-            throw new IllegalArgumentException();
-        }
-        return (a << 8) + b;
+        int a = inputFile.read();
+        if (a == -1) return -1;
+        return (a << 8) + inputFile.read();
     }
 
     private static int getOneByte(InputStream inputFile) throws IOException {
